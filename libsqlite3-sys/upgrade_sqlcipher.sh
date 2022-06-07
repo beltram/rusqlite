@@ -14,7 +14,7 @@ mkdir -p $SCRIPT_DIR/sqlcipher.src
 [ -e "v${SQLCIPHER_VERSION}.tar.gz" ] || curl -sfL -O "https://github.com/sqlcipher/sqlcipher/archive/v${SQLCIPHER_VERSION}.tar.gz"
 tar xzf "v${SQLCIPHER_VERSION}.tar.gz" --strip-components=1 -C "$SCRIPT_DIR/sqlcipher.src"
 cd "$SCRIPT_DIR/sqlcipher.src"
-./configure --with-crypto-lib=none
+./configure --with-crypto-lib=nss
 make sqlite3.c
 cp sqlite3.c sqlite3.h sqlite3ext.h "$SCRIPT_DIR/sqlcipher/"
 cd "$SCRIPT_DIR"
@@ -31,5 +31,6 @@ find "$SCRIPT_DIR/../target" -type f -name bindgen.rs -exec mv {} "$SQLCIPHER_LI
 # Sanity checks
 cd "$SCRIPT_DIR/.." || { echo "fatal error" >&2; exit 1; }
 cargo update
-cargo test --features "backup blob chrono functions limits load_extension serde_json trace vtab bundled-sqlcipher-vendored-openssl"
-printf '    \e[35;1mFinished\e[0m bundled-sqlcipher-vendored-openssl/sqlcipher tests\n'
+#cargo test --features "backup blob chrono functions limits load_extension serde_json trace vtab bundled-sqlcipher-vendored-openssl"
+cargo test --features "backup blob chrono functions limits load_extension serde_json trace vtab bundled-sqlcipher-nss"
+printf '    \e[35;1mFinished\e[0m bundled-sqlcipher-nss/sqlcipher tests\n'

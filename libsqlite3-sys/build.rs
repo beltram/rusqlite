@@ -54,15 +54,15 @@ fn main() {
         || cfg!(feature = "bundled-sqlcipher")
     {
         #[cfg(any(
-            feature = "bundled",
-            feature = "bundled-windows",
-            feature = "bundled-sqlcipher"
+        feature = "bundled",
+        feature = "bundled-windows",
+        feature = "bundled-sqlcipher"
         ))]
         build_bundled::main(&out_dir, &out_path);
         #[cfg(not(any(
-            feature = "bundled",
-            feature = "bundled-windows",
-            feature = "bundled-sqlcipher"
+        feature = "bundled",
+        feature = "bundled-windows",
+        feature = "bundled-sqlcipher"
         )))]
         panic!("The runtime test should not run this branch, which has not compiled any logic.")
     } else {
@@ -71,9 +71,9 @@ fn main() {
 }
 
 #[cfg(any(
-    feature = "bundled",
-    feature = "bundled-windows",
-    feature = "bundled-sqlcipher"
+feature = "bundled",
+feature = "bundled-windows",
+feature = "bundled-sqlcipher"
 ))]
 mod build_bundled {
     use std::env;
@@ -87,7 +87,7 @@ mod build_bundled {
 
         // This is just a sanity check, the top level `main` should ensure this.
         assert!(!(cfg!(feature = "bundled-windows") && !cfg!(feature = "bundled") && !win_target()),
-            "This module should not be used: we're not on Windows and the bundled feature has not been enabled");
+                "This module should not be used: we're not on Windows and the bundled feature has not been enabled");
 
         #[cfg(feature = "buildtime_bindgen")]
         {
@@ -137,16 +137,17 @@ mod build_bundled {
             let is_windows = host.contains("windows") && target.contains("windows");
             let is_apple = host.contains("apple") && target.contains("apple");
 
-            let lib_dir = env("OPENSSL_LIB_DIR").map(PathBuf::from);
-            let inc_dir = env("OPENSSL_INCLUDE_DIR").map(PathBuf::from);
+            let openssl_lib_dir = env("OPENSSL_LIB_DIR").map(PathBuf::from);
+            let openssl_inc_dir = env("OPENSSL_INCLUDE_DIR").map(PathBuf::from);
             let mut use_openssl = false;
+            let mut use_nss = false;
 
-            let (lib_dir, inc_dir) = match (lib_dir, inc_dir) {
+            let (lib_dir, inc_dir) = match (openssl_lib_dir, openssl_inc_dir) {
                 (Some(lib_dir), Some(inc_dir)) => {
                     use_openssl = true;
                     (lib_dir, inc_dir)
                 }
-                (lib_dir, inc_dir) => match find_openssl_dir(&host, &target) {
+                (lib_dir, inc_dir) => match find_openssl_dir() {
                     None => {
                         if is_windows && !cfg!(feature = "bundled-sqlcipher-vendored-openssl") {
                             panic!("Missing environment variable OPENSSL_DIR or OPENSSL_DIR is not set")
@@ -177,6 +178,10 @@ mod build_bundled {
                 },
             };
 
+            if cfg!(feature = "bundled-sqlcipher-nss") {
+                use_nss = true;
+            }
+
             if cfg!(feature = "bundled-sqlcipher-vendored-openssl") {
                 cfg.include(env::var("DEP_OPENSSL_INCLUDE").unwrap());
                 // cargo will resolve downstream to the static lib in
@@ -187,6 +192,14 @@ mod build_bundled {
                 cfg.include(inc_dir.to_string_lossy().as_ref());
                 let lib = lib_dir.join("libcrypto.lib");
                 cfg.flag(lib.to_string_lossy().as_ref());
+            } else if use_nss {
+                cfg.flag("-DSQLCIPHER_CRYPTO_NSS");
+                let nss_dir = find_nss_dir().expect("Could not find nss dir locally");
+                let inc_dir = nss_dir.join("include");
+                let lib_dir = nss_dir.join("lib");
+                cfg.include(inc_dir.to_string_lossy().as_ref());
+                println!("cargo:rustc-link-lib=nss3");
+                println!("cargo:rustc-link-search={}", lib_dir.to_string_lossy());
             } else if use_openssl {
                 cfg.include(inc_dir.to_string_lossy().as_ref());
                 // branch not taken on Windows, just `crypto` is fine.
@@ -299,9 +312,13 @@ mod build_bundled {
         }
     }
 
-    fn find_openssl_dir(_host: &str, _target: &str) -> Option<PathBuf> {
+    fn find_openssl_dir() -> Option<PathBuf> {
         let openssl_dir = env("OPENSSL_DIR");
         openssl_dir.map(PathBuf::from)
+    }
+
+    fn find_nss_dir() -> Option<PathBuf> {
+        env("NSS_DIR").map(PathBuf::from)
     }
 }
 
@@ -375,7 +392,7 @@ mod build_linked {
                 format!("{}/bindgen_bundled_version.rs", lib_name()),
                 out_path,
             )
-            .expect("Could not copy bindings to output directory");
+                .expect("Could not copy bindings to output directory");
         } else {
             bindings::write_to_out_dir(header, out_path);
         }
@@ -389,6 +406,7 @@ mod build_linked {
             _ => "dylib",
         }
     }
+
     // Prints the necessary cargo link commands and returns the path to the header.
     fn find_sqlite() -> HeaderLocation {
         let link_lib = lib_name();
@@ -468,6 +486,7 @@ mod build_linked {
 #[cfg(not(feature = "buildtime_bindgen"))]
 mod bindings {
     #![allow(dead_code)]
+
     use super::HeaderLocation;
 
     use std::fs;
@@ -476,11 +495,11 @@ mod bindings {
     static PREBUILT_BINDGEN_PATHS: &[&str] = &[
         "bindgen-bindings/bindgen_3.6.8.rs",
         #[cfg(feature = "min_sqlite_version_3_6_23")]
-        "bindgen-bindings/bindgen_3.6.23.rs",
+            "bindgen-bindings/bindgen_3.6.23.rs",
         #[cfg(feature = "min_sqlite_version_3_7_7")]
-        "bindgen-bindings/bindgen_3.7.7.rs",
+            "bindgen-bindings/bindgen_3.7.7.rs",
         #[cfg(feature = "min_sqlite_version_3_7_16")]
-        "bindgen-bindings/bindgen_3.7.16.rs",
+            "bindgen-bindings/bindgen_3.7.16.rs",
     ];
 
     pub fn write_to_out_dir(_header: HeaderLocation, out_path: &Path) {
