@@ -17,4 +17,7 @@ jobs:
         with: { sharedKey: fullBuild }
 
       - run: sudo apt-get -V install libnss3 --reinstall
-      - run: cargo test --features 'modern-full bundled-sqlcipher-nss' --verbose
+      - name: test NSS
+        env:
+          NSS_DIR: /usr/include/nss
+        run: cargo test --features 'modern-full bundled-sqlcipher-nss' --verbose
