@@ -17,10 +17,9 @@ jobs:
         with: { sharedKey: fullBuild }
 
       - run: sudo apt-get -V install libnss3 --reinstall
-      - run: |
-          ls /usr/
-          ls /usr/include/
-          ls /usr/local/include/
+      - run: ls /usr/
+      - run: ls /usr/include/
+      - run: ls /usr/local/include/
       - name: test NSS
         env:
           NSS_DIR: /usr/include/nss
