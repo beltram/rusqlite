@@ -16,5 +16,5 @@ jobs:
       - uses: Swatinem/rust-cache@v1
         with: { sharedKey: fullBuild }
 
-      - run: apt-get install nss
+      - run: sudo apt-get install nss
       - run: cargo test --features 'modern-full bundled-sqlcipher-nss' --verbose
